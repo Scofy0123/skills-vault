@@ -1,0 +1,12 @@
+{
+  "标题": "Andrej Karpathy 发布全新 AI 核心课程：从零手写大语言模型分词器",
+  "一句话摘要": "Karpathy 发布了新的硬核教学视频《Let's build the GPT Tokenizer》，深度拆解大模型底层分词机制及 BPE 算法。",
+  "简介": "前 OpenAI 核心架构师 Andrej Karpathy 继续其顶级技术教学系列，这一次的重心放在了构成 LLM 骨干的 Tokenizer（分词器）上。他在交流中详细剖析了 BPE（Byte-Pair Encoding）算法的实现原理、历史包袱，以及不合理的分词机制是如何引发各类不可预期的模型幻觉现象的。这对旨在从根源上理解并将大语言模型投入特定工程领域的开发者具有重要指导价值。",
+  "原文链接": "https://twitter.com/karpathy/status/lets-build-the-gpt-tokenizer",
+  "来源平台": "推特",
+  "信息层级": "🔴 每日速览",
+  "作者/来源": "karpathy",
+  "热度指标": "播放及互动突破百万",
+  "状态": "待处理",
+  "扫描日期": 1729400000000
+}

@@ -1,0 +1,307 @@
+{
+  "schema_version": 1,
+  "repo_root": "/Users/scofy/.agents",
+  "canonical_root": "/Users/scofy/.agents/skills",
+  "tool_roots": {
+    "claude": "/Users/scofy/.claude/skills",
+    "codex": "/Users/scofy/.codex/skills",
+    "gemini": "/Users/scofy/.gemini/antigravity/skills",
+    "openclaw": "/Users/scofy/.openclaw/skills"
+  },
+  "managed_skills": [
+    {
+      "name": "agent-reach",
+      "canonical_path": "/Users/scofy/.agents/skills/agent-reach",
+      "expose_to": ["openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "ai-hub-setup",
+      "canonical_path": "/Users/scofy/.agents/skills/ai-hub-setup",
+      "expose_to": ["gemini"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "ai-learning-hub",
+      "canonical_path": "/Users/scofy/.agents/skills/ai-learning-hub",
+      "expose_to": ["gemini"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "ai-topic-fetcher",
+      "canonical_path": "/Users/scofy/.agents/skills/ai-topic-fetcher",
+      "expose_to": ["gemini"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "ai-topic-scanner",
+      "canonical_path": "/Users/scofy/.agents/skills/ai-topic-scanner",
+      "expose_to": ["gemini"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "ai-topic-to-base",
+      "canonical_path": "/Users/scofy/.agents/skills/ai-topic-to-base",
+      "expose_to": ["gemini"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "boss-job-scout",
+      "canonical_path": "/Users/scofy/.agents/skills/boss-job-scout",
+      "expose_to": ["gemini"],
+      "aliases": ["destinyscout"],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "check-prd",
+      "canonical_path": "/Users/scofy/.agents/skills/check-prd",
+      "expose_to": ["claude", "codex", "gemini"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "create-prd-skill",
+      "canonical_path": "/Users/scofy/.agents/skills/create-prd-skill",
+      "expose_to": ["claude", "gemini"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "elite-longterm-memory",
+      "canonical_path": "/Users/scofy/.agents/skills/elite-longterm-memory",
+      "expose_to": ["openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "feishu-prd-review-loop",
+      "canonical_path": "/Users/scofy/.agents/skills/feishu-prd-review-loop",
+      "expose_to": ["codex"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-approval",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-approval",
+      "expose_to": ["claude", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-base",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-base",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-calendar",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-calendar",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-contact",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-contact",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-doc",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-doc",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-drive",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-drive",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-event",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-event",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-im",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-im",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-mail",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-mail",
+      "expose_to": ["claude", "codex", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-minutes",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-minutes",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-openapi-explorer",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-openapi-explorer",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-shared",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-shared",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-sheets",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-sheets",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-skill-maker",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-skill-maker",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-task",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-task",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-vc",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-vc",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-whiteboard",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-whiteboard",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-wiki",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-wiki",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-workflow-meeting-summary",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-workflow-meeting-summary",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "lark-workflow-standup-report",
+      "canonical_path": "/Users/scofy/.agents/skills/lark-workflow-standup-report",
+      "expose_to": ["claude", "codex", "gemini", "openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "local-wiki",
+      "canonical_path": "/Users/scofy/.agents/skills/local-wiki",
+      "expose_to": ["gemini"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "pdf-translator",
+      "canonical_path": "/Users/scofy/.agents/skills/pdf-translator",
+      "expose_to": ["gemini"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "self-improving",
+      "canonical_path": "/Users/scofy/.agents/skills/self-improving",
+      "expose_to": ["openclaw"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    },
+    {
+      "name": "skill-creator",
+      "canonical_path": "/Users/scofy/.agents/skills/skill-creator",
+      "expose_to": ["gemini"],
+      "aliases": [],
+      "extra_roots": ["/Users/scofy/Documents/coding/0305/.claude/skills"],
+      "managed": true
+    },
+    {
+      "name": "skill-tester",
+      "canonical_path": "/Users/scofy/.agents/skills/skill-tester",
+      "expose_to": ["gemini"],
+      "aliases": [],
+      "extra_roots": [],
+      "managed": true
+    }
+  ],
+  "unmanaged_allowlist": {
+    "claude": [],
+    "codex": [".system", "doc", "pdf", "playwright", "playwright-interactive", "screenshot", "spreadsheet"],
+    "gemini": ["understand-anything"],
+    "openclaw": []
+  }
+}

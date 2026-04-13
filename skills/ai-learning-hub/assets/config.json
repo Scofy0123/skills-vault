@@ -1,0 +1,12 @@
+{
+  "base_token": "C2aAbLq6zaEU7TsjZl0cvw7Unog",
+  "wiki_space_id": "KNF0w6NVEiAFZNkjYU4c2746nFY",
+  "user_open_id": "ou_9590c795acc7fe56a6a7e5bf1c9af1f8",
+  "im_enabled": true,
+  "tables": {
+    "feed": "tbl5KJv8zhJUJoyp",
+    "favorites": "tblWlJY9oJJzAE1E",
+    "deep_learning": "tblNtPPOp83EG8vA",
+    "fetch_config": "tblRXlyhnzLe66py"
+  }
+}

@@ -1,0 +1,402 @@
+#!/usr/bin/env python3
+
+import argparse
+import json
+import shutil
+import sys
+from pathlib import Path
+
+
+HOME = Path.home()
+REPO_ROOT = HOME / ".agents"
+REGISTRY_PATH = REPO_ROOT / "skills-registry.yaml"
+CANONICAL_ROOT = REPO_ROOT / "skills"
+IGNORED_NAMES = {".DS_Store"}
+
+
+def fail(message: str, code: int = 1) -> int:
+    print(message, file=sys.stderr)
+    return code
+
+
+def load_registry() -> dict:
+    if not REGISTRY_PATH.exists():
+        raise FileNotFoundError(f"Registry not found: {REGISTRY_PATH}")
+    with REGISTRY_PATH.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def save_registry(registry: dict) -> None:
+    registry["managed_skills"] = sorted(registry["managed_skills"], key=lambda item: item["name"])
+    REGISTRY_PATH.write_text(
+        json.dumps(registry, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
+def tool_roots(registry: dict) -> dict:
+    return {name: Path(path) for name, path in registry["tool_roots"].items()}
+
+
+def managed_map(registry: dict) -> dict:
+    return {skill["name"]: skill for skill in registry["managed_skills"]}
+
+
+def all_aliases(registry: dict) -> dict:
+    aliases = {}
+    for skill in registry["managed_skills"]:
+        for alias in skill.get("aliases", []):
+            aliases[alias] = skill["name"]
+    return aliases
+
+
+def resolve_target(path: Path) -> Path:
+    try:
+        return path.resolve(strict=False)
+    except RuntimeError:
+        return path
+
+
+def is_expected_symlink(path: Path, target: Path) -> bool:
+    return path.is_symlink() and resolve_target(path) == resolve_target(target)
+
+
+def projection_paths(skill: dict, registry: dict) -> list:
+    projections = []
+    for tool in skill.get("expose_to", []):
+        root = Path(registry["tool_roots"][tool])
+        projections.append((tool, root / skill["name"], skill["canonical_path"]))
+        for alias in skill.get("aliases", []):
+            projections.append((tool, root / alias, skill["canonical_path"]))
+    for extra_root in skill.get("extra_roots", []):
+        root = Path(extra_root)
+        projections.append((f"extra:{root}", root / skill["name"], skill["canonical_path"]))
+        for alias in skill.get("aliases", []):
+            projections.append((f"extra:{root}", root / alias, skill["canonical_path"]))
+    return projections
+
+
+def expected_standard_entries(registry: dict) -> dict:
+    expected = {tool: set() for tool in registry["tool_roots"]}
+    for skill in registry["managed_skills"]:
+        for tool in skill.get("expose_to", []):
+            expected[tool].add(skill["name"])
+            expected[tool].update(skill.get("aliases", []))
+    return expected
+
+
+def audit_registry(registry: dict, strict: bool = False) -> list:
+    issues = []
+    tool_root_map = tool_roots(registry)
+    managed = managed_map(registry)
+    aliases = all_aliases(registry)
+    expected = expected_standard_entries(registry)
+
+    if not CANONICAL_ROOT.exists():
+        issues.append(f"Missing canonical root: {CANONICAL_ROOT}")
+        return issues
+
+    for skill in registry["managed_skills"]:
+        name = skill["name"]
+        canonical = Path(skill["canonical_path"])
+        expected_canonical = CANONICAL_ROOT / name
+        if canonical != expected_canonical:
+            issues.append(f"{name}: canonical_path must be {expected_canonical}, found {canonical}")
+        if not canonical.exists():
+            issues.append(f"{name}: missing canonical directory {canonical}")
+            continue
+        if canonical.is_symlink():
+            issues.append(f"{name}: canonical directory must be real, found symlink {canonical}")
+        elif not canonical.is_dir():
+            issues.append(f"{name}: canonical path is not a directory: {canonical}")
+        if not (canonical / "SKILL.md").exists():
+            issues.append(f"{name}: missing SKILL.md in canonical directory {canonical}")
+
+        projected_names = {(label, path) for label, path, _ in projection_paths(skill, registry)}
+        expected_paths = {path for _, path in projected_names}
+
+        for tool, root in tool_root_map.items():
+            direct = root / name
+            alias_paths = [root / alias for alias in skill.get("aliases", [])]
+            should_exist = tool in skill.get("expose_to", [])
+            paths = [direct, *alias_paths]
+            if should_exist:
+                for path in paths:
+                    if not (path.exists() or path.is_symlink()):
+                        issues.append(f"{name}: missing projection {path}")
+                    elif not is_expected_symlink(path, canonical):
+                        issues.append(f"{name}: {path} must be a symlink to {canonical}")
+            else:
+                for path in paths:
+                    if path.exists() or path.is_symlink():
+                        issues.append(f"{name}: unexpected projection present at {path}")
+
+        for extra_root in skill.get("extra_roots", []):
+            root = Path(extra_root)
+            direct = root / name
+            alias_paths = [root / alias for alias in skill.get("aliases", [])]
+            for path in [direct, *alias_paths]:
+                if not (path.exists() or path.is_symlink()):
+                    issues.append(f"{name}: missing extra projection {path}")
+                elif not is_expected_symlink(path, canonical):
+                    issues.append(f"{name}: {path} must be a symlink to {canonical}")
+
+    for entry in sorted(CANONICAL_ROOT.iterdir(), key=lambda item: item.name):
+        if entry.name in IGNORED_NAMES:
+            continue
+        if entry.name not in managed:
+            if strict:
+                issues.append(f"Unregistered canonical entry found: {entry}")
+            continue
+        if entry.is_symlink():
+            issues.append(f"Canonical entry must be real, found symlink: {entry}")
+
+    allowlist = {tool: set(items) for tool, items in registry.get("unmanaged_allowlist", {}).items()}
+    for tool, root in tool_root_map.items():
+        if not root.exists():
+            issues.append(f"Missing consumer root for {tool}: {root}")
+            continue
+        for entry in sorted(root.iterdir(), key=lambda item: item.name):
+            name = entry.name
+            if name in IGNORED_NAMES:
+                continue
+            if name in expected[tool]:
+                continue
+            if name in allowlist.get(tool, set()):
+                continue
+            if name in managed or name in aliases:
+                issues.append(f"{tool}: managed name present outside its declared exposure: {entry}")
+                continue
+            if strict:
+                issues.append(f"{tool}: unmanaged entry is not allowlisted: {entry}")
+
+    return issues
+
+
+def print_issues(issues: list) -> None:
+    for issue in issues:
+        print(f"- {issue}", file=sys.stderr)
+
+
+def cmd_audit(args: argparse.Namespace) -> int:
+    registry = load_registry()
+    issues = audit_registry(registry, strict=args.strict)
+    if issues:
+        if not args.quiet:
+            print("Skill library audit failed:", file=sys.stderr)
+            print_issues(issues)
+        return 1
+    if not args.quiet:
+        print("Skill library audit passed.")
+    return 0
+
+
+def ensure_symlink(path: Path, target: Path) -> str:
+    if path.exists() or path.is_symlink():
+        if is_expected_symlink(path, target):
+            return "kept"
+        raise RuntimeError(f"{path} already exists and does not point to {target}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.symlink_to(target)
+    return "created"
+
+
+def cleanup_projection(path: Path, target: Path) -> str:
+    if not (path.exists() or path.is_symlink()):
+        return "absent"
+    if is_expected_symlink(path, target):
+        path.unlink()
+        return "removed"
+    raise RuntimeError(f"{path} exists outside the registry contract")
+
+
+def cmd_publish(_args: argparse.Namespace) -> int:
+    registry = load_registry()
+    issues = audit_registry(registry, strict=False)
+    canonical_only_issues = [
+        issue for issue in issues
+        if "missing canonical" in issue
+        or "canonical directory" in issue
+        or "canonical_path" in issue
+        or "missing SKILL.md" in issue
+    ]
+    if canonical_only_issues:
+        print("Cannot publish while canonical issues exist:", file=sys.stderr)
+        print_issues(canonical_only_issues)
+        return 1
+
+    tool_root_map = tool_roots(registry)
+    created = 0
+    removed = 0
+
+    for skill in registry["managed_skills"]:
+        canonical = Path(skill["canonical_path"])
+
+        for tool, root in tool_root_map.items():
+            paths = [root / skill["name"], *[root / alias for alias in skill.get("aliases", [])]]
+            if tool in skill.get("expose_to", []):
+                for path in paths:
+                    result = ensure_symlink(path, canonical)
+                    created += int(result == "created")
+            else:
+                for path in paths:
+                    result = cleanup_projection(path, canonical)
+                    removed += int(result == "removed")
+
+        for extra_root in skill.get("extra_roots", []):
+            root = Path(extra_root)
+            for path in [root / skill["name"], *[root / alias for alias in skill.get("aliases", [])]]:
+                result = ensure_symlink(path, canonical)
+                created += int(result == "created")
+
+    print(f"Publish completed. created={created} removed={removed}")
+    return 0
+
+
+def validate_tools(registry: dict, tools: list) -> list:
+    unknown = sorted(set(tools) - set(registry["tool_roots"]))
+    if unknown:
+        raise ValueError(f"Unknown tool ids: {', '.join(unknown)}")
+    return sorted(set(tools))
+
+
+def create_skill_entry(registry: dict, name: str, expose_to: list, aliases: list, extra_roots: list) -> dict:
+    return {
+        "name": name,
+        "canonical_path": str(CANONICAL_ROOT / name),
+        "expose_to": expose_to,
+        "aliases": aliases,
+        "extra_roots": extra_roots,
+        "managed": True,
+    }
+
+
+def cmd_create(args: argparse.Namespace) -> int:
+    registry = load_registry()
+    expose_to = validate_tools(registry, args.expose)
+    aliases = sorted(set(args.alias))
+    extra_roots = sorted(set(args.extra_root))
+    managed = managed_map(registry)
+    if args.name in managed:
+        return fail(f"Managed skill already exists in registry: {args.name}")
+    canonical = CANONICAL_ROOT / args.name
+    if canonical.exists() or canonical.is_symlink():
+        return fail(f"Canonical path already exists: {canonical}")
+
+    canonical.mkdir(parents=True, exist_ok=False)
+    title = args.name.replace("-", " ").title()
+    (canonical / "SKILL.md").write_text(
+        f"---\nname: {args.name}\ndescription: TODO\n---\n\n# {title}\n\nFill in the workflow for {args.name}.\n",
+        encoding="utf-8",
+    )
+    registry["managed_skills"].append(create_skill_entry(registry, args.name, expose_to, aliases, extra_roots))
+    save_registry(registry)
+    if not args.no_publish:
+        return cmd_publish(args)
+    print(f"Created managed skill: {canonical}")
+    return 0
+
+
+def cmd_import(args: argparse.Namespace) -> int:
+    registry = load_registry()
+    expose_to = validate_tools(registry, args.expose)
+    aliases = sorted(set(args.alias))
+    extra_roots = sorted(set(args.extra_root))
+    source = Path(args.source).expanduser().resolve()
+    name = args.name or source.name
+    canonical = CANONICAL_ROOT / name
+
+    if not source.exists():
+        return fail(f"Import source does not exist: {source}")
+    if not source.is_dir():
+        return fail(f"Import source must be a directory: {source}")
+    if canonical.exists() or canonical.is_symlink():
+        return fail(f"Canonical destination already exists: {canonical}")
+    if name in managed_map(registry):
+        return fail(f"Managed skill already exists in registry: {name}")
+
+    if args.move:
+        shutil.move(str(source), str(canonical))
+    else:
+        shutil.copytree(source, canonical, symlinks=True)
+    registry["managed_skills"].append(create_skill_entry(registry, name, expose_to, aliases, extra_roots))
+    save_registry(registry)
+    if not args.no_publish:
+        return cmd_publish(args)
+    print(f"Imported {source} -> {canonical}")
+    return 0
+
+
+def cmd_doctor(_args: argparse.Namespace) -> int:
+    registry = load_registry()
+    managed = registry["managed_skills"]
+    print(f"Repo root: {REPO_ROOT}")
+    print(f"Registry: {REGISTRY_PATH}")
+    print(f"Canonical root: {CANONICAL_ROOT}")
+    print(f"Managed skills: {len(managed)}")
+    for tool, path in registry["tool_roots"].items():
+        print(f"{tool}: {path}")
+    print("Allowlisted unmanaged entries:")
+    for tool, entries in registry.get("unmanaged_allowlist", {}).items():
+        joined = ", ".join(entries) if entries else "(none)"
+        print(f"  {tool}: {joined}")
+    issues = audit_registry(registry, strict=True)
+    if issues:
+        print(f"Audit status: FAIL ({len(issues)} issue(s))")
+        print_issues(issues)
+        return 1
+    print("Audit status: PASS")
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Unified skill vault management CLI")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    audit = subparsers.add_parser("audit", help="Validate the managed skill library")
+    audit.add_argument("--strict", action="store_true", help="Fail on unmanaged entries outside the allowlist")
+    audit.add_argument("--quiet", action="store_true", help="Silence successful audit output")
+    audit.set_defaults(func=cmd_audit)
+
+    publish = subparsers.add_parser("publish", help="Rebuild managed symlink projections")
+    publish.set_defaults(func=cmd_publish)
+
+    create = subparsers.add_parser("create", help="Create a new managed skill in the canonical library")
+    create.add_argument("name")
+    create.add_argument("--expose", nargs="+", default=[], help="Consumer tool ids to expose into")
+    create.add_argument("--alias", action="append", default=[], help="Alias name to project alongside the canonical name")
+    create.add_argument("--extra-root", action="append", default=[], help="Additional projection root outside the standard tool roots")
+    create.add_argument("--no-publish", action="store_true", help="Skip publish after creating the skill")
+    create.set_defaults(func=cmd_create)
+
+    import_cmd = subparsers.add_parser("import", help="Import a legacy skill into the canonical library")
+    import_cmd.add_argument("source")
+    import_cmd.add_argument("--name", help="Canonical skill name; defaults to the source directory name")
+    import_cmd.add_argument("--expose", nargs="+", default=[], help="Consumer tool ids to expose into")
+    import_cmd.add_argument("--alias", action="append", default=[], help="Alias name to project alongside the canonical name")
+    import_cmd.add_argument("--extra-root", action="append", default=[], help="Additional projection root outside the standard tool roots")
+    import_cmd.add_argument("--move", action="store_true", help="Move the source directory instead of copying it")
+    import_cmd.add_argument("--no-publish", action="store_true", help="Skip publish after importing the skill")
+    import_cmd.set_defaults(func=cmd_import)
+
+    doctor = subparsers.add_parser("doctor", help="Show registry status and run a strict audit")
+    doctor.set_defaults(func=cmd_doctor)
+
+    return parser
+
+
+def main() -> int:
+    parser = build_parser()
+    args = parser.parse_args()
+    try:
+        return args.func(args)
+    except FileNotFoundError as exc:
+        return fail(str(exc))
+    except ValueError as exc:
+        return fail(str(exc))
+    except RuntimeError as exc:
+        return fail(str(exc))
+
+
+if __name__ == "__main__":
+    sys.exit(main())

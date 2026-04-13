@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FILTERED_PATH=""
+IFS=':' read -r -a PATH_PARTS <<< "${PATH:-}"
+for part in "${PATH_PARTS[@]}"; do
+  [[ -z "$part" || "$part" == "$SELF_DIR" ]] && continue
+  if [[ -z "$FILTERED_PATH" ]]; then
+    FILTERED_PATH="$part"
+  else
+    FILTERED_PATH="$FILTERED_PATH:$part"
+  fi
+done
+
+if ! "$HOME/.agents/bin/skillsctl" audit --strict --quiet; then
+  "$HOME/.agents/bin/skillsctl" audit --strict
+  echo "Refusing to start claude until the unified skill library passes audit." >&2
+  exit 1
+fi
+
+REAL_BIN="$(PATH="$FILTERED_PATH" command -v claude || true)"
+if [[ -z "$REAL_BIN" ]]; then
+  echo "Unable to locate the real claude binary outside $SELF_DIR" >&2
+  exit 127
+fi
+
+export PATH="$FILTERED_PATH"
+exec "$REAL_BIN" "$@"

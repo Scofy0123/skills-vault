@@ -1,0 +1,52 @@
+{
+  "name": "默认配置",
+  "description": "AI agent 相关热点，覆盖 YouTube/X/GitHub/小红书/B站 五个渠道",
+  "topic": "AI热点新闻",
+  "channels": {
+    "youtube": {
+      "enabled": true,
+      "command": "opencli youtube search",
+      "query": "AI agent",
+      "limit": 20,
+      "threshold": { "field": "views", "min": 10000, "unit": "播放" },
+      "extra_args": "--sort views --upload week",
+      "output_columns": ["title", "channel", "views", "duration", "published", "url"]
+    },
+    "twitter": {
+      "enabled": true,
+      "command": "opencli twitter search",
+      "query": "AI agent",
+      "limit": 20,
+      "threshold": { "field": "likes", "min": 500, "unit": "赞" },
+      "extra_args": "--filter top",
+      "output_columns": ["author", "text", "created_at", "likes", "views", "url"]
+    },
+    "github": {
+      "enabled": true,
+      "command": "gh search repos",
+      "query": "artificial-intelligence",
+      "limit": 15,
+      "threshold": { "field": "stargazerCount", "min": 1000, "unit": "stars" },
+      "extra_args": "--stars \">1000\" --sort updated --topic artificial-intelligence",
+      "output_columns": ["name", "description", "stargazerCount", "url"]
+    },
+    "xiaohongshu": {
+      "enabled": true,
+      "command": "opencli xiaohongshu search",
+      "query": "AI agent",
+      "limit": 20,
+      "threshold": { "field": "likes", "min": 500, "unit": "赞" },
+      "extra_args": "",
+      "output_columns": ["title", "author", "likes", "published_at", "url"]
+    },
+    "bilibili": {
+      "enabled": true,
+      "command": "opencli bilibili search",
+      "query": "AI agent",
+      "limit": 20,
+      "threshold": { "field": "score", "min": 50000, "unit": "播放" },
+      "extra_args": "",
+      "output_columns": ["title", "author", "score", "url"]
+    }
+  }
+}
