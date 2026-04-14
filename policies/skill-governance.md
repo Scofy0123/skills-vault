@@ -4,6 +4,7 @@
 
 - Every self-managed skill must live under `/Users/scofy/.agents/skills/<skill-name>`.
 - Canonical managed skills must be real directories, never symlinks.
+- Approved external bundles may appear under `/Users/scofy/.agents/skills/<bundle-name>` only when the registry marks them as external bundles and the path is a symlink to `/Users/scofy/.agents/vendor/...`.
 
 ## Consumer Roots
 
@@ -27,6 +28,7 @@ Managed entries in consumer roots must stay symlinks to the canonical path in `/
 
 - Do not create, edit, rename, or delete managed skills directly inside consumer roots.
 - Do not replace a managed symlink with a real directory.
+- Do not hand-edit files inside approved external bundles from the projected path; update the clone in `vendor/` instead.
 - Do not hand-edit the registry for routine moves when `skillsctl` can perform the operation.
 
 ## Failure Handling

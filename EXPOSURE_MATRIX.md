@@ -55,3 +55,7 @@ Generated during the unified skill vault migration on 2026-04-14.
 - `agent-reach`
 - `elite-longterm-memory`
 - `self-improving`
+
+## External Bundles
+
+- `superpowers`: external bundle from `obra/superpowers`, mounted at `/Users/scofy/.agents/skills/superpowers` for Codex-compatible recursive discovery and Skill Hub indexing via `SKILL_HUB_EXTRA_PATHS`.

@@ -28,6 +28,7 @@ def load_registry() -> dict:
 
 def save_registry(registry: dict) -> None:
     registry["managed_skills"] = sorted(registry["managed_skills"], key=lambda item: item["name"])
+    registry["external_bundles"] = sorted(registry.get("external_bundles", []), key=lambda item: item["name"])
     REGISTRY_PATH.write_text(
         json.dumps(registry, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
@@ -40,6 +41,10 @@ def tool_roots(registry: dict) -> dict:
 
 def managed_map(registry: dict) -> dict:
     return {skill["name"]: skill for skill in registry["managed_skills"]}
+
+
+def external_bundle_map(registry: dict) -> dict:
+    return {bundle["name"]: bundle for bundle in registry.get("external_bundles", [])}
 
 
 def all_aliases(registry: dict) -> dict:
@@ -85,16 +90,44 @@ def expected_standard_entries(registry: dict) -> dict:
     return expected
 
 
+def audit_external_bundles(registry: dict) -> list:
+    issues = []
+    bundles = external_bundle_map(registry)
+    for name, bundle in bundles.items():
+        clone_path = Path(bundle["clone_path"])
+        source_path = Path(bundle["source_path"])
+        projection_path = Path(bundle["projection_path"])
+        if not clone_path.exists():
+            issues.append(f"{name}: missing external bundle clone {clone_path}")
+            continue
+        if not clone_path.is_dir():
+            issues.append(f"{name}: clone_path is not a directory: {clone_path}")
+        if not source_path.exists():
+            issues.append(f"{name}: missing external bundle source {source_path}")
+            continue
+        if not source_path.is_dir():
+            issues.append(f"{name}: source_path is not a directory: {source_path}")
+        if not (projection_path.exists() or projection_path.is_symlink()):
+            issues.append(f"{name}: missing external bundle projection {projection_path}")
+            continue
+        if not is_expected_symlink(projection_path, source_path):
+            issues.append(f"{name}: {projection_path} must be a symlink to {source_path}")
+    return issues
+
+
 def audit_registry(registry: dict, strict: bool = False) -> list:
     issues = []
     tool_root_map = tool_roots(registry)
     managed = managed_map(registry)
+    bundles = external_bundle_map(registry)
     aliases = all_aliases(registry)
     expected = expected_standard_entries(registry)
 
     if not CANONICAL_ROOT.exists():
         issues.append(f"Missing canonical root: {CANONICAL_ROOT}")
         return issues
+
+    issues.extend(audit_external_bundles(registry))
 
     for skill in registry["managed_skills"]:
         name = skill["name"]
@@ -143,6 +176,15 @@ def audit_registry(registry: dict, strict: bool = False) -> list:
 
     for entry in sorted(CANONICAL_ROOT.iterdir(), key=lambda item: item.name):
         if entry.name in IGNORED_NAMES:
+            continue
+        if entry.name in bundles:
+            bundle = bundles[entry.name]
+            projection_path = Path(bundle["projection_path"])
+            source_path = Path(bundle["source_path"])
+            if entry != projection_path:
+                issues.append(f"{entry.name}: bundle projection must live at {projection_path}")
+            elif not is_expected_symlink(entry, source_path):
+                issues.append(f"{entry.name}: bundle projection must be a symlink to {source_path}")
             continue
         if entry.name not in managed:
             if strict:
@@ -249,6 +291,12 @@ def cmd_publish(_args: argparse.Namespace) -> int:
                 result = ensure_symlink(path, canonical)
                 created += int(result == "created")
 
+    for bundle in registry.get("external_bundles", []):
+        source_path = Path(bundle["source_path"])
+        projection_path = Path(bundle["projection_path"])
+        result = ensure_symlink(projection_path, source_path)
+        created += int(result == "created")
+
     print(f"Publish completed. created={created} removed={removed}")
     return 0
 
@@ -330,12 +378,18 @@ def cmd_import(args: argparse.Namespace) -> int:
 def cmd_doctor(_args: argparse.Namespace) -> int:
     registry = load_registry()
     managed = registry["managed_skills"]
+    bundles = registry.get("external_bundles", [])
     print(f"Repo root: {REPO_ROOT}")
     print(f"Registry: {REGISTRY_PATH}")
     print(f"Canonical root: {CANONICAL_ROOT}")
     print(f"Managed skills: {len(managed)}")
+    print(f"External bundles: {len(bundles)}")
     for tool, path in registry["tool_roots"].items():
         print(f"{tool}: {path}")
+    if bundles:
+        print("External bundle projections:")
+        for bundle in bundles:
+            print(f"  {bundle['name']}: {bundle['projection_path']} -> {bundle['source_path']}")
     print("Allowlisted unmanaged entries:")
     for tool, entries in registry.get("unmanaged_allowlist", {}).items():
         joined = ", ".join(entries) if entries else "(none)"

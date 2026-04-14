@@ -7,3 +7,5 @@ venv/
 node_modules/
 .mypy_cache/
 *.pyc
+vendor/
+skills/superpowers

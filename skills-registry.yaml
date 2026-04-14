@@ -8,6 +8,17 @@
     "gemini": "/Users/scofy/.gemini/antigravity/skills",
     "openclaw": "/Users/scofy/.openclaw/skills"
   },
+  "external_bundles": [
+    {
+      "name": "superpowers",
+      "repo_url": "https://github.com/obra/superpowers.git",
+      "clone_path": "/Users/scofy/.agents/vendor/superpowers",
+      "source_path": "/Users/scofy/.agents/vendor/superpowers/skills",
+      "projection_path": "/Users/scofy/.agents/skills/superpowers",
+      "scan_path": "/Users/scofy/.agents/vendor/superpowers/skills",
+      "managed": false
+    }
+  ],
   "managed_skills": [
     {
       "name": "agent-reach",
