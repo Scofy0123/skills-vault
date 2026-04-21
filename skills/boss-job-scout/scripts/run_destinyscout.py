@@ -8,9 +8,51 @@ from datetime import datetime
 
 CONFIG_FILE = os.path.expanduser("~/.gemini/antigravity/skills/destinyscout/configs/_default.json")
 OUTPUT_FILE = "topic_results.json"
+RAW_OUTPUT_FILE = "topic_results_raw.json"
 MAX_BATCH_SIZE = 2  # 每次最多盲搜词汇数量以避免防爬
 JITTER_MIN = 30
 JITTER_MAX = 55
+
+
+def get_raw_output_path():
+    output_dir = os.path.dirname(OUTPUT_FILE)
+    if output_dir:
+        return os.path.join(output_dir, RAW_OUTPUT_FILE)
+    return RAW_OUTPUT_FILE
+
+
+def write_json_file(path, payload):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+
+
+def build_output_data(config_name, scan_date, results, selected_queries, completed_queries, status, error=None):
+    output = {
+        "mode": "platform",
+        "platform": "boss",
+        "config_name": config_name,
+        "scan_date": scan_date,
+        "selected_queries": selected_queries,
+        "completed_queries": completed_queries,
+        "status": status,
+        "results": results,
+    }
+    if error:
+        output["error"] = error
+    return output
+
+
+def persist_raw_results(config_name, scan_date, all_results, selected_queries, completed_queries, status, error=None):
+    raw_output = build_output_data(
+        config_name=config_name,
+        scan_date=scan_date,
+        results=all_results,
+        selected_queries=selected_queries,
+        completed_queries=completed_queries,
+        status=status,
+        error=error,
+    )
+    write_json_file(get_raw_output_path(), raw_output)
 
 def run_scout():
     print(f"Loading config from {CONFIG_FILE}...")
@@ -34,6 +76,7 @@ def run_scout():
     # 打乱顺序，并且单次会话无论多少个词开启，强制只抓最多2个词
     random.shuffle(channel_keys)
     selected_keys = channel_keys[:MAX_BATCH_SIZE]
+    selected_queries = [channels[key].get("query") for key in selected_keys]
     
     print("=" * 60)
     print("🔥 BOSS 直聘深度仿生潜行模式已激活 (Anti-Crawler V2.0)")
@@ -42,6 +85,17 @@ def run_scout():
     print("\\n")
     
     all_results = []
+    completed_queries = []
+    error_info = None
+
+    persist_raw_results(
+        config_name=config.get("name", "Default"),
+        scan_date=scan_date,
+        all_results=all_results,
+        selected_queries=selected_queries,
+        completed_queries=completed_queries,
+        status="running",
+    )
     
     for i, key in enumerate(selected_keys):
         channel = channels[key]
@@ -65,6 +119,20 @@ def run_scout():
             print(f"❌ 被防御网侦测到了! 执行中断保护！错误日志:")
             print("STDOUT:", process.stdout)
             print("STDERR:", process.stderr)
+            error_info = {
+                "query": query,
+                "stdout": process.stdout.strip(),
+                "stderr": process.stderr.strip(),
+            }
+            persist_raw_results(
+                config_name=config.get("name", "Default"),
+                scan_date=scan_date,
+                all_results=all_results,
+                selected_queries=selected_queries,
+                completed_queries=completed_queries,
+                status="partial",
+                error=error_info,
+            )
             break
             
         try:
@@ -80,6 +148,15 @@ def run_scout():
                     item["_query"] = query
                 
                 all_results.extend(data)
+                completed_queries.append(query)
+                persist_raw_results(
+                    config_name=config.get("name", "Default"),
+                    scan_date=scan_date,
+                    all_results=all_results,
+                    selected_queries=selected_queries,
+                    completed_queries=completed_queries,
+                    status="running" if i < len(selected_keys) - 1 else "completed",
+                )
             else:
                 print(f" -> 解析失败。API拦截了格式，输出：{process.stdout[:100]}")
         except Exception as e:
@@ -109,7 +186,7 @@ def run_scout():
         if "实习" in name or "元/天" in salary or "K" not in salary.upper():
             continue
             
-        match = re.search(r'(\\d+)-(\\d+)K', salary, re.IGNORECASE)
+        match = re.search(r'(\d+)-(\d+)K', salary, re.IGNORECASE)
         if match:
             min_k = int(match.group(1))
             max_k = int(match.group(2))
@@ -132,11 +209,24 @@ def run_scout():
         "platform": "boss",
         "config_name": config.get("name", "Default"),
         "scan_date": scan_date,
+        "selected_queries": selected_queries,
+        "completed_queries": completed_queries,
+        "status": "partial" if error_info else "completed",
         "results": valid_jobs
     }
+    if error_info:
+        output_data["error"] = error_info
     
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        json.dump(output_data, f, ensure_ascii=False, indent=2)
+    write_json_file(OUTPUT_FILE, output_data)
+    persist_raw_results(
+        config_name=config.get("name", "Default"),
+        scan_date=scan_date,
+        all_results=all_results,
+        selected_queries=selected_queries,
+        completed_queries=completed_queries,
+        status=output_data["status"],
+        error=error_info,
+    )
         
     print(f"✅ 成果已沉淀至 {OUTPUT_FILE}。等候指令！")
 
