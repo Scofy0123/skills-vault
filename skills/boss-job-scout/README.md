@@ -98,6 +98,10 @@ python3 scripts/run_destinyscout.py
 # 阶段2：高频穿戴装甲（启动深海防封萃取，潜行提取全量 JD）
 python3 scripts/extract_jd.py
 
+# 产物：
+# - topic_results_detailed.json：带详细 JD 的深潜结果
+#   upload_to_base.py 会优先读取它，并把详细 JD 同步进飞书 Base 字段“详细JD”
+
 # 阶段3：降维打击推送（呼叫大模型结合 DNA 斩杀烂岗位，并送达飞书）
 python3 scripts/push_top5_v3.py
 ```
