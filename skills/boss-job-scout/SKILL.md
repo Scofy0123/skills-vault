@@ -130,7 +130,7 @@ python3 ~/.gemini/antigravity/skills/destinyscout/scripts/run_destinyscout.py
 
 ### Step 2: AI 过滤与提炼
 
-对抓取到的原始数据，必须进行**两道过滤**：
+对抓取到的原始数据，必须进行**两道过滤**。但在进入过滤前，Agent 必须先把当前已成功抓到的原始岗位立即沉淀到工作区 `topic_results_raw.json`，哪怕后续某个关键词触发 `Network Error`，前面已经到手的原始数据也不能丢：
 
 1. **数值硬过滤（硬性拦截）**：
    - 使用正则 `(\d+)-(\d+)K` 提取 `salary` 字符串中的上限数值（Max K）。
@@ -145,7 +145,14 @@ python3 ~/.gemini/antigravity/skills/destinyscout/scripts/run_destinyscout.py
 
 ### Step 3: 输出结构化 JSON
 
-输出到工作区 `<workspace>/topic_results.json`：
+输出到工作区两个 JSON：
+
+1. `<workspace>/topic_results_raw.json`
+   - 保存每次成功抓到的原始岗位明细
+   - 必须在每个关键词成功返回后立刻刷新写盘
+   - 若本轮被中途拦截，也要保留已抓到的部分结果与错误状态
+2. `<workspace>/topic_results.json`
+   - 保存经过硬过滤后的高薪结果，供后续落库、推送与 HTML 看板使用
 
 ```json
 {
@@ -176,6 +183,9 @@ Agent 根据 `Step 0` 的环境检查结果，采取不同的输出策略：
    ```bash
    python3 ~/.gemini/antigravity/skills/destinyscout/scripts/upload_to_base.py
    ```
+   - 如果当前工作区存在 `topic_results_detailed.json`，脚本必须优先使用这份深潜结果同步到 Base。
+   - 对于本轮已存在于 Base 的同批次记录，脚本应按 `详情链接 + 抓取日期` 精准回填更新，而不是重复新增。
+   - 深潜拿到的 `detailed_description` 必须一并写入多维表格字段 `详细JD`；若该字段尚不存在，脚本应自动补建文本字段后再写入。
 2. **Deep Scrape 深潜提取 (V3新增)**：对初筛出的大于阈值的 Top 数据进行深度提取：
    ```bash
    python3 ~/.gemini/antigravity/skills/destinyscout/scripts/extract_jd.py
@@ -207,7 +217,8 @@ Agent 根据 `Step 0` 的环境检查结果，采取不同的输出策略：
 向用户总结汇报：
 - 共搜索了哪几个关键词。
 - 原始数据多少条，经过硬性过滤后存活的最新有效数据多少条。
-- 如果是分支 A 且验证成功：提示数据已自动入库视图，并且卡片简报已推送到飞书聊天。
+- 明确告知 `topic_results_raw.json` 与 `topic_results.json` 各自保存的内容，尤其是在被 Boss 中途拦截时，提醒用户原始明细仍可直接查看。
+- 如果是分支 A 且验证成功：提示数据已自动入库视图；若存在 `topic_results_detailed.json`，还要明确说明详细 JD 已同步进入 Base 的 `详细JD` 字段；并且卡片简报已推送到飞书聊天。
 - 如果是分支 B 且验证成功：提示数据已生成为本地具有最新交互特效的 HTML 数据大屏，并**温柔提示**：“如果希望下次全自动连通落库，随时叫我帮你安装 lark-cli 哦”。
 
 ## 配置管理

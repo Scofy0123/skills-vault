@@ -1,5 +1,5 @@
 ---
-name: feishu-prd-review-loop
+name: check-prd-FeishuAssistant
 description: Run a complete Feishu/Lark PRD review-to-delivery loop: classify the PRD scope, choose the right review dimensions, write anchored comments back into the document, parse comment-thread replies as `采纳` or `不采纳`, require PM confirmation of exact planned edits before any document change, maintain a waiver ledger and scoring-based delivery gate, persist the full feedback snapshot into a dedicated Feishu Base, and then ask whether to run `check-prd` again. Use this whenever the user shares a `feishu.cn` or `lark` PRD link and wants review, comment write-back, comment-driven revision, waiver management, PRD 准入判断, or a repeatable PRD review workflow, even if they only say “帮我评估这个 PRD”, “把建议写回飞书”, “按评论改文档”, or “判断这个 PRD 能不能进开发”.
 compatibility: Requires `lark-cli` and Feishu user-authenticated access for user-scoped documents.
 metadata:
@@ -35,7 +35,7 @@ This skill is a workflow wrapper. It does **not** replace `check-prd`; it should
 - Persist the latest reply snapshot before applying final PRD edits.
 - Never edit the PRD before the PM has confirmed the exact planned change content.
 - Do not auto-run the second review. Always ask first.
-- Do not assume every PRD needs all 14 dimensions. Scope the review first.
+- Do not assume every PRD needs all chapters. Determine the L level first, then scope the review to the matching chapter set.
 - When reporting remaining work to the user, prefer `章节路径 + 锚点原文 + 问题摘要`; use `comment_id` only as secondary debug context.
 
 ## Review Policy
@@ -44,14 +44,14 @@ Load the default scope and scoring policy from [review-policy.config.json](revie
 
 The default scope contract is:
 
-- `小需求核心包`: `01 / 04 / 05 / 08 / 09 / 12`
-- `中需求标准包`: small package + `06 / 11`
-- `中需求触发补检`: `07 / 10 / 13 / 14`
-- `大需求完整包`: all applicable dimensions
+- `L1（配置级）`: `ch10-2 / ch10-3 / ch14` + G1
+- `L2（规则级）`: `ch01 / ch02 / ch06 / ch10-1 / ch10-2 / ch10-3 / ch14` + G1；触发补检：`ch03 / ch11 / ch12 / ch13`
+- `L3（模块级）`: L2 包 + `ch12 / ch13` + G2；`ch11` 可选；触发补检：`ch03 / ch04 / ch05 / ch07 / ch08-09`
+- `L4（系统级）`: 全量 `ch01–ch14` + G1 / G2 / G3
 
 `强制补检` means:
 
-- even when the current pass is `小需求` or `中需求`
+- even when the current pass is `L1` or `L2` or `L3`
 - if the PRD clearly hits a high-risk change signal
 - the linked dimension must be added automatically
 - and the user cannot remove it from the actual check scope
@@ -82,11 +82,13 @@ If the user asks for the full loop in one request, start at `Scope Setup`, conti
 - For wiki links, use `lark-cli wiki spaces get_node` to fetch `node.obj_type` and `node.obj_token`.
 - If `obj_type` is not `docx` or `doc`, adapt to the actual resource type instead of pretending it is a text document.
 - Fetch the text body before classifying scope.
+- Determine the complexity level using the L1-L4 decision tree in `prd-quality-framework/complexity-assessment.md §1`.
 - Recommend one of:
-  - `小需求`
-  - `中需求`
-  - `大需求`
-- Recommend the actual dimension scope using the review-policy config.
+  - `L1（配置级）`
+  - `L2（规则级）`
+  - `L3（模块级）`
+  - `L4（系统级）`
+- Recommend the actual chapter scope using the review-policy config.
 - Apply `强制补检` rules whenever explicit evidence exists in the user prompt, PRD text, prototype, fields, or process flow.
 - Track for this round:
   - `review_profile`
